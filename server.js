@@ -4,7 +4,7 @@ const Database = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const https = require('https');
 
 // Config
 const PORT = process.env.PORT || 3001;
@@ -124,21 +124,42 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// KMB API proxy (for Angular frontend)
-app.use('/api/kmb', createProxyMiddleware({
-  target: 'https://data.etabus.gov.hk',
-  changeOrigin: true,
-  pathRewrite: { '^/api/kmb': '/v1/transport/kmb' },
-  logLevel: 'warn'
-}));
+// Simple proxy helper
+function proxyGet(req, res, targetHost, targetPath) {
+  const options = {
+    hostname: targetHost,
+    port: 443,
+    path: targetPath,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept': 'application/json',
+    }
+  };
+  
+  const proxyReq = https.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res, { end: true });
+  });
+  
+  proxyReq.on('error', (err) => {
+    res.status(502).json({ error: 'Proxy error', message: err.message });
+  });
+  
+  proxyReq.end();
+}
 
-// CTB API proxy (for Angular frontend)
-app.use('/api/ctb', createProxyMiddleware({
-  target: 'https://rt.data.gov.hk',
-  changeOrigin: true,
-  pathRewrite: { '^/api/ctb': '/v2/transport/citybus' },
-  logLevel: 'warn'
-}));
+// KMB API proxy
+app.use('/api/kmb', (req, res) => {
+  const pathPart = req.url.startsWith('/') ? req.url : '/' + req.url;
+  proxyGet(req, res, 'data.etabus.gov.hk', '/v1/transport/kmb' + pathPart);
+});
+
+// CTB API proxy
+app.use('/api/ctb', (req, res) => {
+  const pathPart = req.url.startsWith('/') ? req.url : '/' + req.url;
+  proxyGet(req, res, 'rt.data.gov.hk', '/v2/transport/citybus' + pathPart);
+});
 
 // Get all routes (with pagination)
 app.get('/api/routes', (req, res) => {
