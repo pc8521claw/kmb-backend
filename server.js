@@ -331,10 +331,50 @@ app.post('/api/admin/fares', authenticateAdmin, (req, res) => {
   }
 });
 
+// Get all fares with route info (for admin)
+app.get('/api/admin/fares', authenticateAdmin, (req, res) => {
+  try {
+    const { search, limit = 100, offset = 0 } = req.query;
+    
+    let sql = `
+      SELECT f.id, f.fare, f.stop_seq, r.route_number, r.company, r.origin_tc, r.destination_tc
+      FROM fares f
+      JOIN routes r ON f.route_id = r.id
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (search) {
+      sql += ' AND r.route_number LIKE ?';
+      params.push(`%${search}%`);
+    }
+    
+    sql += ' ORDER BY r.route_number, f.stop_seq LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const fares = db.prepare(sql).all(...params);
+    const total = db.prepare('SELECT COUNT(*) as count FROM fares').get().count;
+    
+    res.json({ fares, total });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/admin/fares/:id', authenticateAdmin, (req, res) => {
   try {
     db.prepare('DELETE FROM fares WHERE id = ?').run(req.params.id);
     res.json({ message: 'Fare deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/fares/:id', authenticateAdmin, (req, res) => {
+  try {
+    const { fare } = req.body;
+    db.prepare('UPDATE fares SET fare = ? WHERE id = ?').run(fare, req.params.id);
+    res.json({ message: 'Fare updated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

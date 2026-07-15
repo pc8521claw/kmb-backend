@@ -94,6 +94,7 @@
   
   <div class="tabs">
     <button class="tab active" onclick="showTab('routes')">路線</button>
+    <button class="tab" onclick="showTab('fares')">車費</button>
     <button class="tab" onclick="showTab('announcements')">公告</button>
   </div>
   
@@ -117,6 +118,36 @@
               </tr>
             </thead>
             <tbody id="routesTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Fares Section -->
+    <div class="section" id="faresSection">
+      <div class="card">
+        <div class="card-header">
+          <h2>車費管理</h2>
+          <button class="btn btn-secondary" onclick="loadFares()">🔄 刷新</button>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;">
+            <input type="text" id="fareSearch" placeholder="搜尋路線號碼..." style="padding:0.5rem;border:1px solid #ddd;border-radius:0.5rem;width:200px;" onkeyup="if(event.key==='Enter')loadFares()">
+            <button class="btn btn-primary" onclick="loadFares()">搜尋</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>路線</th>
+                <th>公司</th>
+                <th>起點</th>
+                <th>終點</th>
+                <th>站序</th>
+                <th>車費 (HK$)</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="faresTable"></tbody>
           </table>
         </div>
       </div>
@@ -437,6 +468,44 @@ async function deleteAnnouncement(id) {
   await fetch(`${API}/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders() });
   await loadAnnouncements();
   await loadStats();
+}
+
+// Fares
+async function loadFares() {
+  const search = document.getElementById('fareSearch').value;
+  const res = await fetch(`${API}/api/admin/fares?search=${encodeURIComponent(search)}`, { headers: authHeaders() });
+  const data = await res.json();
+  
+  if (data.fares && data.fares.length === 0) {
+    document.getElementById('faresTable').innerHTML = '<tr><td colspan="7" class="empty">暫無車費記錄</td></tr>';
+    return;
+  }
+  
+  document.getElementById('faresTable').innerHTML = (data.fares || []).map(f => `
+    <tr>
+      <td><strong>${f.route_number}</strong></td>
+      <td>${f.company}</td>
+      <td>${f.origin_tc || '-'}</td>
+      <td>${f.destination_tc || '-'}</td>
+      <td>${f.stop_seq}</td>
+      <td>
+        <input type="number" step="0.1" value="${f.fare}" id="fare-${f.id}" style="width:70px;padding:0.25rem;border:1px solid #ddd;border-radius:0.25rem;">
+      </td>
+      <td>
+        <button class="btn btn-primary" onclick="updateFare(${f.id})">儲存</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updateFare(id) {
+  const fare = document.getElementById(`fare-${id}`).value;
+  await fetch(`${API}/api/admin/fares/${id}`, {
+    method: 'PUT',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fare: parseFloat(fare) })
+  });
+  alert('車費已更新');
 }
 
 // Init
