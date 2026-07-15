@@ -1,0 +1,451 @@
+const express = require('express');
+const cors = require('cors');
+const Database = require('better-sqlite3');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
+
+// Config
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'kmb-backend-secret-key-change-in-production';
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'kmb.db');
+
+// Ensure data directory exists
+const dataDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Init DB
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// ============ DATABASE SCHEMA ============
+db.exec(`
+  -- Admin users
+  CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+
+  -- Bus routes
+  CREATE TABLE IF NOT EXISTS routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_number TEXT NOT NULL,
+    company TEXT NOT NULL, -- 'KMB' or 'CTB'
+    origin_tc TEXT,
+    destination_tc TEXT,
+    origin_sc TEXT,
+    destination_sc TEXT,
+    origin_en TEXT,
+    destination_en TEXT,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    UNIQUE(route_number, company)
+  );
+
+  -- Fare data
+  CREATE TABLE IF NOT EXISTS fares (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_id INTEGER REFERENCES routes(id),
+    stop_seq INTEGER,
+    stop_id TEXT,
+    stop_name_tc TEXT,
+    stop_name_en TEXT,
+    fare REAL,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+
+  -- Service hours
+  CREATE TABLE IF NOT EXISTS service_hours (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_id INTEGER REFERENCES routes(id),
+    direction TEXT NOT NULL, -- 'outbound' or 'inbound'
+    first_bus TEXT,
+    last_bus TEXT,
+    last_updated INTEGER
+  );
+
+  -- Announcements
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    priority INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+
+  -- Migration log
+  CREATE TABLE IF NOT EXISTS migration_log (
+    name TEXT PRIMARY KEY,
+    ran_at INTEGER
+  );
+`);
+
+// Create default admin if none exists (password: admin123)
+const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get().count;
+if (adminCount === 0) {
+  // Simple hash for demo - in production use bcrypt
+  const passwordHash = 'admin123'; // TODO: hash this
+  db.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run('admin', passwordHash);
+  console.log('Default admin created: admin / admin123');
+}
+
+// ============ AUTH MIDDLEWARE ============
+function authenticateAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+// ============ PUBLIC API ROUTES ============
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// Get all routes (with pagination)
+app.get('/api/routes', (req, res) => {
+  try {
+    const { page = 1, limit = 50, company, search } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let sql = 'SELECT * FROM routes WHERE 1=1';
+    const params = [];
+    
+    if (company) {
+      sql += ' AND company = ?';
+      params.push(company);
+    }
+    if (search) {
+      sql += ' AND (route_number LIKE ? OR origin_tc LIKE ? OR destination_tc LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    sql += ' ORDER BY route_number LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const routes = db.prepare(sql).all(...params);
+    const total = db.prepare('SELECT COUNT(*) as count FROM routes').get().count;
+    
+    res.json({ routes, total, page: Number(page), limit: Number(limit) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get route by ID with fares
+app.get('/api/routes/:id', (req, res) => {
+  try {
+    const route = db.prepare('SELECT * FROM routes WHERE id = ?').get(req.params.id);
+    if (!route) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    const fares = db.prepare('SELECT * FROM fares WHERE route_id = ? ORDER BY stop_seq').all(req.params.id);
+    const serviceHours = db.prepare('SELECT * FROM service_hours WHERE route_id = ?').all(req.params.id);
+    
+    res.json({ ...route, fares, serviceHours });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get fares by route number
+app.get('/api/fares/:routeNumber', (req, res) => {
+  try {
+    const { company } = req.query;
+    let sql = `
+      SELECT f.*, r.route_number, r.company, r.origin_tc, r.destination_tc
+      FROM fares f
+      JOIN routes r ON f.route_id = r.id
+      WHERE r.route_number = ?
+    `;
+    const params = [req.params.routeNumber];
+    
+    if (company) {
+      sql += ' AND r.company = ?';
+      params.push(company);
+    }
+    
+    sql += ' ORDER BY f.stop_seq';
+    
+    const fares = db.prepare(sql).all(...params);
+    res.json(fares);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get service hours
+app.get('/api/service-hours/:routeNumber', (req, res) => {
+  try {
+    const { company } = req.query;
+    const route = db.prepare('SELECT id FROM routes WHERE route_number = ? AND company = ?')
+      .get(req.params.routeNumber, company);
+    
+    if (!route) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    const serviceHours = db.prepare('SELECT * FROM service_hours WHERE route_id = ?').all(route.id);
+    res.json(serviceHours);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get announcements
+app.get('/api/announcements', (req, res) => {
+  try {
+    const announcements = db.prepare(
+      'SELECT * FROM announcements WHERE active = 1 ORDER BY priority DESC, created_at DESC'
+    ).all();
+    res.json(announcements);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ ADMIN API ROUTES ============
+
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get(username);
+    
+    if (!admin || admin.password_hash !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign({ id: admin.id, username: admin.username }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, username: admin.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get admin info
+app.get('/api/admin/me', authenticateAdmin, (req, res) => {
+  res.json({ id: req.admin.id, username: req.admin.username });
+});
+
+// CRUD: Routes
+app.get('/api/admin/routes', authenticateAdmin, (req, res) => {
+  try {
+    const routes = db.prepare('SELECT * FROM routes ORDER BY route_number').all();
+    res.json(routes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/routes', authenticateAdmin, (req, res) => {
+  try {
+    const { route_number, company, origin_tc, destination_tc, origin_sc, destination_sc, origin_en, destination_en } = req.body;
+    
+    const result = db.prepare(`
+      INSERT INTO routes (route_number, company, origin_tc, destination_tc, origin_sc, destination_sc, origin_en, destination_en)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(route_number, company, origin_tc, destination_tc, origin_sc, destination_sc, origin_en, destination_en);
+    
+    res.json({ id: result.lastInsertRowid, message: 'Route created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/routes/:id', authenticateAdmin, (req, res) => {
+  try {
+    const { origin_tc, destination_tc, origin_sc, destination_sc, origin_en, destination_en } = req.body;
+    
+    db.prepare(`
+      UPDATE routes SET origin_tc = ?, destination_tc = ?, origin_sc = ?, destination_sc = ?, origin_en = ?, destination_en = ?
+      WHERE id = ?
+    `).run(origin_tc, destination_tc, origin_sc, destination_sc, origin_en, destination_en, req.params.id);
+    
+    res.json({ message: 'Route updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/routes/:id', authenticateAdmin, (req, res) => {
+  try {
+    db.prepare('DELETE FROM fares WHERE route_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM service_hours WHERE route_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM routes WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Route deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CRUD: Fares
+app.get('/api/admin/routes/:id/fares', authenticateAdmin, (req, res) => {
+  try {
+    const fares = db.prepare('SELECT * FROM fares WHERE route_id = ? ORDER BY stop_seq').all(req.params.id);
+    res.json(fares);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/fares', authenticateAdmin, (req, res) => {
+  try {
+    const { route_id, stop_seq, stop_id, stop_name_tc, stop_name_en, fare } = req.body;
+    
+    const result = db.prepare(`
+      INSERT INTO fares (route_id, stop_seq, stop_id, stop_name_tc, stop_name_en, fare)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(route_id, stop_seq, stop_id, stop_name_tc, stop_name_en, fare);
+    
+    res.json({ id: result.lastInsertRowid, message: 'Fare added' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/fares/:id', authenticateAdmin, (req, res) => {
+  try {
+    db.prepare('DELETE FROM fares WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Fare deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CRUD: Service Hours
+app.get('/api/admin/routes/:id/service-hours', authenticateAdmin, (req, res) => {
+  try {
+    const serviceHours = db.prepare('SELECT * FROM service_hours WHERE route_id = ?').all(req.params.id);
+    res.json(serviceHours);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/service-hours', authenticateAdmin, (req, res) => {
+  try {
+    const { route_id, direction, first_bus, last_bus } = req.body;
+    
+    const existing = db.prepare('SELECT id FROM service_hours WHERE route_id = ? AND direction = ?')
+      .get(route_id, direction);
+    
+    if (existing) {
+      db.prepare('UPDATE service_hours SET first_bus = ?, last_bus = ?, last_updated = strftime(\'%s\', \'now\') WHERE id = ?')
+        .run(first_bus, last_bus, existing.id);
+      res.json({ message: 'Service hours updated' });
+    } else {
+      const result = db.prepare(`
+        INSERT INTO service_hours (route_id, direction, first_bus, last_bus)
+        VALUES (?, ?, ?, ?)
+      `).run(route_id, direction, first_bus, last_bus);
+      res.json({ id: result.lastInsertRowid, message: 'Service hours created' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CRUD: Announcements
+app.get('/api/admin/announcements', authenticateAdmin, (req, res) => {
+  try {
+    const announcements = db.prepare('SELECT * FROM announcements ORDER BY priority DESC, created_at DESC').all();
+    res.json(announcements);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/announcements', authenticateAdmin, (req, res) => {
+  try {
+    const { title, content, priority } = req.body;
+    
+    const result = db.prepare(`
+      INSERT INTO announcements (title, content, priority)
+      VALUES (?, ?, ?)
+    `).run(title, content, priority || 0);
+    
+    res.json({ id: result.lastInsertRowid, message: 'Announcement created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/announcements/:id', authenticateAdmin, (req, res) => {
+  try {
+    const { title, content, priority, active } = req.body;
+    
+    db.prepare('UPDATE announcements SET title = ?, content = ?, priority = ?, active = ? WHERE id = ?')
+      .run(title, content, priority || 0, active !== undefined ? active : 1, req.params.id);
+    
+    res.json({ message: 'Announcement updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/announcements/:id', authenticateAdmin, (req, res) => {
+  try {
+    db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Announcement deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stats
+app.get('/api/admin/stats', authenticateAdmin, (req, res) => {
+  try {
+    const stats = {
+      routes: db.prepare('SELECT COUNT(*) as count FROM routes').get().count,
+      fares: db.prepare('SELECT COUNT(*) as count FROM fares').get().count,
+      announcements: db.prepare('SELECT COUNT(*) as count FROM announcements').get().count,
+    };
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ STATIC FILES (Admin Panel) ============
+app.use('/admin', express.static(path.join(__dirname, 'public')));
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ============ START SERVER ============
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚌 KMB Backend running on http://0.0.0.0:${PORT}`);
+  console.log(`📊 Admin Panel: http://0.0.0.0:${PORT}/admin`);
+  console.log(`🔐 Default login: admin / admin123`);
+});
+
+module.exports = app;

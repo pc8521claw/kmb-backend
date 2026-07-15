@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KMB Backend Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+    
+    /* Login Screen */
+    .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-box { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
+    .login-box h1 { font-size: 1.5rem; margin-bottom: 1.5rem; text-align: center; color: #1e40af; }
+    .login-box input { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 1rem; }
+    .login-box button { width: 100%; padding: 0.75rem; background: #1e40af; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: pointer; }
+    .login-box button:hover { background: #1e3a8a; }
+    .login-error { color: #dc2626; margin-top: 1rem; text-align: center; display: none; }
+    
+    /* Dashboard */
+    .dashboard { display: none; }
+    .dashboard.active { display: block; }
+    
+    .header { background: #1e40af; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.25rem; }
+    .header .logout { background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; }
+    
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; padding: 1.5rem; }
+    .stat-card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .stat-card .number { font-size: 2rem; font-weight: 700; color: #1e40af; }
+    .stat-card .label { color: #666; font-size: 0.875rem; margin-top: 0.25rem; }
+    
+    .tabs { display: flex; background: white; border-bottom: 1px solid #e5e5e5; padding: 0 1.5rem; }
+    .tab { padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: #666; border-bottom: 2px solid transparent; }
+    .tab.active { color: #1e40af; border-bottom-color: #1e40af; font-weight: 500; }
+    
+    .content { padding: 1.5rem; }
+    
+    .section { display: none; }
+    .section.active { display: block; }
+    
+    .card { background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 1rem; }
+    .card-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .card-body { padding: 1.5rem; }
+    
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; }
+    .btn-primary { background: #1e40af; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-secondary { background: #e5e5e5; color: #333; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e5e5; font-size: 0.875rem; }
+    th { background: #f9fafb; font-weight: 500; color: #666; }
+    tr:hover { background: #f9fafb; }
+    
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+    .modal.active { display: flex; }
+    .modal-content { background: white; border-radius: 1rem; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h2 { font-size: 1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e5e5; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.875rem; color: #666; margin-bottom: 0.25rem; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 0.875rem; }
+    
+    .empty { text-align: center; padding: 3rem; color: #999; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-container" id="loginScreen">
+  <div class="login-box">
+    <h1>🚌 KMB Backend</h1>
+    <input type="text" id="username" placeholder="Username" autocomplete="username">
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+    <button onclick="login()">登入</button>
+    <p class="login-error" id="loginError">用户名或密碼錯誤</p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <h1>🚌 KMB Backend Admin</h1>
+    <button class="logout" onclick="logout()">登出</button>
+  </div>
+  
+  <div class="stats" id="stats"></div>
+  
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('routes')">路線</button>
+    <button class="tab" onclick="showTab('announcements')">公告</button>
+  </div>
+  
+  <div class="content">
+    <!-- Routes Section -->
+    <div class="section active" id="routesSection">
+      <div class="card">
+        <div class="card-header">
+          <h2>路線管理</h2>
+          <button class="btn btn-primary" onclick="showRouteModal()">+ 新增路線</button>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th>路線</th>
+                <th>公司</th>
+                <th>起點</th>
+                <th>終點</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="routesTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Announcements Section -->
+    <div class="section" id="announcementsSection">
+      <div class="card">
+        <div class="card-header">
+          <h2>公告管理</h2>
+          <button class="btn btn-primary" onclick="showAnnouncementModal()">+ 新增公告</button>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th>標題</th>
+                <th>優先級</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="announcementsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Route Modal -->
+<div class="modal" id="routeModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="routeModalTitle">新增路線</h2>
+      <button class="modal-close" onclick="closeRouteModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="routeId">
+      <div class="form-group">
+        <label>路線號碼</label>
+        <input type="text" id="routeNumber" placeholder="例如: 1">
+      </div>
+      <div class="form-group">
+        <label>公司</label>
+        <select id="routeCompany">
+          <option value="KMB">九巴 (KMB)</option>
+          <option value="CTB">城巴 (CTB)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>起點 (中文)</label>
+        <input type="text" id="routeOriginTc" placeholder="例如: 屯門">
+      </div>
+      <div class="form-group">
+        <label>終點 (中文)</label>
+        <input type="text" id="routeDestTc" placeholder="例如: 中環">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRouteModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveRoute()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announcement Modal -->
+<div class="modal" id="announcementModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="announcementModalTitle">新增公告</h2>
+      <button class="modal-close" onclick="closeAnnouncementModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="announcementId">
+      <div class="form-group">
+        <label>標題</label>
+        <input type="text" id="announcementTitle" placeholder="例如: 路線 1 服務調整">
+      </div>
+      <div class="form-group">
+        <label>內容</label>
+        <textarea id="announcementContent" rows="4" placeholder="公告內容..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>優先級 (0-10)</label>
+        <input type="number" id="announcementPriority" value="0" min="0" max="10">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeAnnouncementModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAnnouncement()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let token = localStorage.getItem('kmb_admin_token');
+
+// Login
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  
+  try {
+    const res = await fetch(`${API}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    if (!res.ok) throw new Error();
+    
+    const data = await res.json();
+    token = data.token;
+    localStorage.setItem('kmb_admin_token', token);
+    showDashboard();
+  } catch (err) {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem('kmb_admin_token');
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function authHeaders() {
+  return { 'Authorization': `Bearer ${token}` };
+}
+
+async function showDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').classList.add('active');
+  await loadStats();
+  await loadRoutes();
+  await loadAnnouncements();
+}
+
+async function loadStats() {
+  const res = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
+  const data = await res.json();
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="number">${data.routes}</div><div class="label">路線</div></div>
+    <div class="stat-card"><div class="number">${data.fares}</div><div class="label">車費記錄</div></div>
+    <div class="stat-card"><div class="number">${data.announcements}</div><div class="label">公告</div></div>
+  `;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(tab + 'Section').classList.add('active');
+}
+
+// Routes
+async function loadRoutes() {
+  const res = await fetch(`${API}/api/admin/routes`, { headers: authHeaders() });
+  const routes = await res.json();
+  
+  if (routes.length === 0) {
+    document.getElementById('routesTable').innerHTML = '<tr><td colspan="5" class="empty">暫無路線</td></tr>';
+    return;
+  }
+  
+  document.getElementById('routesTable').innerHTML = routes.map(r => `
+    <tr>
+      <td><strong>${r.route_number}</strong></td>
+      <td>${r.company}</td>
+      <td>${r.origin_tc || '-'}</td>
+      <td>${r.destination_tc || '-'}</td>
+      <td>
+        <button class="btn btn-secondary" onclick="editRoute(${r.id})">編輯</button>
+        <button class="btn btn-danger" onclick="deleteRoute(${r.id})">刪除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function showRouteModal(id = null) {
+  document.getElementById('routeModal').classList.add('active');
+  document.getElementById('routeId').value = '';
+  document.getElementById('routeNumber').value = '';
+  document.getElementById('routeCompany').value = 'KMB';
+  document.getElementById('routeOriginTc').value = '';
+  document.getElementById('routeDestTc').value = '';
+  document.getElementById('routeModalTitle').textContent = '新增路線';
+}
+
+async function editRoute(id) {
+  const res = await fetch(`${API}/api/admin/routes`, { headers: authHeaders() });
+  const routes = await res.json();
+  const route = routes.find(r => r.id == id);
+  
+  if (route) {
+    document.getElementById('routeModal').classList.add('active');
+    document.getElementById('routeId').value = route.id;
+    document.getElementById('routeNumber').value = route.route_number;
+    document.getElementById('routeCompany').value = route.company;
+    document.getElementById('routeOriginTc').value = route.origin_tc || '';
+    document.getElementById('routeDestTc').value = route.destination_tc || '';
+    document.getElementById('routeModalTitle').textContent = '編輯路線';
+  }
+}
+
+function closeRouteModal() {
+  document.getElementById('routeModal').classList.remove('active');
+}
+
+async function saveRoute() {
+  const id = document.getElementById('routeId').value;
+  const data = {
+    route_number: document.getElementById('routeNumber').value,
+    company: document.getElementById('routeCompany').value,
+    origin_tc: document.getElementById('routeOriginTc').value,
+    destination_tc: document.getElementById('routeDestTc').value
+  };
+  
+  const url = id ? `${API}/api/admin/routes/${id}` : `${API}/api/admin/routes`;
+  const method = id ? 'PUT' : 'POST';
+  
+  await fetch(url, {
+    method,
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  
+  closeRouteModal();
+  await loadRoutes();
+  await loadStats();
+}
+
+async function deleteRoute(id) {
+  if (!confirm('確定刪除此路線？')) return;
+  await fetch(`${API}/api/admin/routes/${id}`, { method: 'DELETE', headers: authHeaders() });
+  await loadRoutes();
+  await loadStats();
+}
+
+// Announcements
+async function loadAnnouncements() {
+  const res = await fetch(`${API}/api/admin/announcements`, { headers: authHeaders() });
+  const announcements = await res.json();
+  
+  if (announcements.length === 0) {
+    document.getElementById('announcementsTable').innerHTML = '<tr><td colspan="4" class="empty">暫無公告</td></tr>';
+    return;
+  }
+  
+  document.getElementById('announcementsTable').innerHTML = announcements.map(a => `
+    <tr>
+      <td>${a.title}</td>
+      <td>${a.priority}</td>
+      <td>${a.active ? '✅ 生效中' : '❌ 已停用'}</td>
+      <td>
+        <button class="btn btn-secondary" onclick="editAnnouncement(${a.id})">編輯</button>
+        <button class="btn btn-danger" onclick="deleteAnnouncement(${a.id})">刪除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function showAnnouncementModal() {
+  document.getElementById('announcementModal').classList.add('active');
+  document.getElementById('announcementId').value = '';
+  document.getElementById('announcementTitle').value = '';
+  document.getElementById('announcementContent').value = '';
+  document.getElementById('announcementPriority').value = '0';
+  document.getElementById('announcementModalTitle').textContent = '新增公告';
+}
+
+async function editAnnouncement(id) {
+  const res = await fetch(`${API}/api/admin/announcements`, { headers: authHeaders() });
+  const announcements = await res.json();
+  const a = announcements.find(x => x.id == id);
+  
+  if (a) {
+    document.getElementById('announcementModal').classList.add('active');
+    document.getElementById('announcementId').value = a.id;
+    document.getElementById('announcementTitle').value = a.title;
+    document.getElementById('announcementContent').value = a.content;
+    document.getElementById('announcementPriority').value = a.priority;
+    document.getElementById('announcementModalTitle').textContent = '編輯公告';
+  }
+}
+
+function closeAnnouncementModal() {
+  document.getElementById('announcementModal').classList.remove('active');
+}
+
+async function saveAnnouncement() {
+  const id = document.getElementById('announcementId').value;
+  const data = {
+    title: document.getElementById('announcementTitle').value,
+    content: document.getElementById('announcementContent').value,
+    priority: parseInt(document.getElementById('announcementPriority').value)
+  };
+  
+  const url = id ? `${API}/api/admin/announcements/${id}` : `${API}/api/admin/announcements`;
+  const method = id ? 'PUT' : 'POST';
+  
+  await fetch(url, {
+    method,
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  
+  closeAnnouncementModal();
+  await loadAnnouncements();
+  await loadStats();
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('確定刪除此公告？')) return;
+  await fetch(`${API}/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders() });
+  await loadAnnouncements();
+  await loadStats();
+}
+
+// Init
+if (token) {
+  showDashboard();
+}
+</script>
+
+</body>
+</html>
