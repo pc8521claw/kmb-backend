@@ -153,7 +153,6 @@
           <div class="search-bar">
             <input type="text" id="routeSearch" placeholder="搜尋路線..." onkeyup="if(event.key==='Enter')loadRoutes()">
             <button class="btn btn-primary" onclick="loadRoutes()">🔍 搜尋</button>
-            <button class="btn btn-secondary" onclick="loadRoutes()">🔄</button>
           </div>
         </div>
         <div class="card-body">
@@ -184,7 +183,6 @@
           <div class="search-bar">
             <input type="text" id="fareSearch" placeholder="搜尋路線號碼..." onkeyup="if(event.key==='Enter')loadFares()">
             <button class="btn btn-primary" onclick="loadFares()">🔍 搜尋</button>
-            <button class="btn btn-secondary" onclick="loadFares()">🔄</button>
           </div>
         </div>
         <div class="card-body">
@@ -193,10 +191,11 @@
               <thead>
                 <tr>
                   <th>路線</th>
-                  <th style="width:50px;">站序</th>
+                  <th style="width:45px;">公司</th>
+                  <th style="width:40px;">序</th>
                   <th>站點</th>
-                  <th style="width:70px;">車費</th>
-                  <th style="width:60px;">操作</th>
+                  <th style="width:60px;">車費</th>
+                  <th style="width:55px;">操作</th>
                 </tr>
               </thead>
               <tbody id="faresTable"></tbody>
@@ -215,7 +214,6 @@
           <div class="search-bar">
             <input type="text" id="serviceSearch" placeholder="搜尋路線號碼..." onkeyup="if(event.key==='Enter')loadServiceFreqs()">
             <button class="btn btn-primary" onclick="loadServiceFreqs()">🔍 搜尋</button>
-            <button class="btn btn-secondary" onclick="loadServiceFreqs()">🔄</button>
           </div>
         </div>
         <div class="card-body">
@@ -449,6 +447,7 @@ async function loadFares() {
   document.getElementById('faresTable').innerHTML = data.fares.map(f => `
     <tr>
       <td><strong>${f.route_number}</strong></td>
+      <td>${f.company}</td>
       <td>${f.stop_seq}</td>
       <td>${f.stop_name_tc || '-'}</td>
       <td><input type="number" step="0.1" value="${f.fare}" class="inline-edit" id="fare-${f.id}"></td>
