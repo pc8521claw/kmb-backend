@@ -413,6 +413,51 @@ app.post('/api/admin/service-hours', authenticateAdmin, (req, res) => {
   }
 });
 
+// Service frequency CRUD
+app.get('/api/admin/routes/:id/service-freq', authenticateAdmin, (req, res) => {
+  try {
+    const freqs = db.prepare('SELECT * FROM service_freq WHERE route_id = ? ORDER BY bound, start_time').all(req.params.id);
+    res.json(freqs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/service-freq', authenticateAdmin, (req, res) => {
+  try {
+    const { route_id, bound, start_time, end_time, headway } = req.body;
+    
+    const result = db.prepare(`
+      INSERT INTO service_freq (route_id, bound, start_time, end_time, headway)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(route_id, bound, start_time, end_time, headway);
+    
+    res.json({ id: result.lastInsertRowid, message: 'Service frequency created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/service-freq/:id', authenticateAdmin, (req, res) => {
+  try {
+    const { start_time, end_time, headway } = req.body;
+    db.prepare('UPDATE service_freq SET start_time = ?, end_time = ?, headway = ? WHERE id = ?')
+      .run(start_time, end_time, headway, req.params.id);
+    res.json({ message: 'Service frequency updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/service-freq/:id', authenticateAdmin, (req, res) => {
+  try {
+    db.prepare('DELETE FROM service_freq WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Service frequency deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // CRUD: Announcements
 app.get('/api/admin/announcements', authenticateAdmin, (req, res) => {
   try {
@@ -466,9 +511,40 @@ app.get('/api/admin/stats', authenticateAdmin, (req, res) => {
     const stats = {
       routes: db.prepare('SELECT COUNT(*) as count FROM routes').get().count,
       fares: db.prepare('SELECT COUNT(*) as count FROM fares').get().count,
+      freqs: db.prepare('SELECT COUNT(*) as count FROM service_freq').get().count,
       announcements: db.prepare('SELECT COUNT(*) as count FROM announcements').get().count,
     };
     res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all service freqs with route info
+app.get('/api/admin/service-freq', authenticateAdmin, (req, res) => {
+  try {
+    const { search, limit = 100, offset = 0 } = req.query;
+    
+    let sql = `
+      SELECT sf.*, r.route_number, r.company, r.origin_tc, r.destination_tc
+      FROM service_freq sf
+      JOIN routes r ON sf.route_id = r.id
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (search) {
+      sql += ' AND r.route_number LIKE ?';
+      params.push(`%${search}%`);
+    }
+    
+    sql += ' ORDER BY r.route_number, sf.bound, sf.start_time LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const freqs = db.prepare(sql).all(...params);
+    const total = db.prepare('SELECT COUNT(*) as count FROM service_freq').get().count;
+    
+    res.json({ freqs, total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

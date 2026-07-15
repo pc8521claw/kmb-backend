@@ -6,10 +6,10 @@
   <title>KMB Backend Admin</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
     
-    /* Login Screen */
-    .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    /* Login */
+    .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .login-box { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
     .login-box h1 { font-size: 1.5rem; margin-bottom: 1.5rem; text-align: center; color: #1e40af; }
     .login-box input { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 1rem; }
@@ -21,53 +21,99 @@
     .dashboard { display: none; }
     .dashboard.active { display: block; }
     
-    .header { background: #1e40af; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 1.25rem; }
-    .header .logout { background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; }
+    /* Header */
+    .header { background: #1e40af; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .header h1 { font-size: 1rem; }
+    .header .logout { background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; }
     
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; padding: 1.5rem; }
-    .stat-card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .stat-card .number { font-size: 2rem; font-weight: 700; color: #1e40af; }
-    .stat-card .label { color: #666; font-size: 0.875rem; margin-top: 0.25rem; }
+    /* Mobile menu toggle */
+    .menu-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0.25rem; }
     
-    .tabs { display: flex; background: white; border-bottom: 1px solid #e5e5e5; padding: 0 1.5rem; }
-    .tab { padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: #666; border-bottom: 2px solid transparent; }
+    /* Tabs */
+    .tabs { display: flex; background: white; border-bottom: 1px solid #e5e5e5; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 0.875rem 1.25rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: #666; border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; }
     .tab.active { color: #1e40af; border-bottom-color: #1e40af; font-weight: 500; }
     
-    .content { padding: 1.5rem; }
+    /* Content */
+    .content { padding: 1rem; max-width: 1200px; margin: 0 auto; }
     
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-card { background: white; padding: 1rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+    .stat-card .number { font-size: 1.75rem; font-weight: 700; color: #1e40af; }
+    .stat-card .label { color: #666; font-size: 0.75rem; margin-top: 0.25rem; }
+    
+    /* Section */
     .section { display: none; }
     .section.active { display: block; }
     
-    .card { background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 1rem; }
-    .card-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
-    .card-header h2 { font-size: 1rem; font-weight: 600; }
-    .card-body { padding: 1.5rem; }
+    /* Card */
+    .card { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1rem; overflow: hidden; }
+    .card-header { padding: 1rem; border-bottom: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center; }
+    .card-header h2 { font-size: 1rem; font-weight: 600; width: 100%; }
+    .card-body { padding: 0; }
     
-    .btn { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; }
+    /* Search */
+    .search-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; width: 100%; }
+    .search-bar input { flex: 1; min-width: 150px; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 0.875rem; }
+    
+    /* Table */
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 0.875rem; }
+    th { background: #f9fafb; font-weight: 500; color: #666; position: sticky; top: 0; }
+    tr:last-child td { border-bottom: none; }
+    
+    /* Buttons */
+    .btn { padding: 0.4rem 0.75rem; border: none; border-radius: 0.4rem; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
     .btn-primary { background: #1e40af; color: white; }
     .btn-danger { background: #dc2626; color: white; }
     .btn-secondary { background: #e5e5e5; color: #333; }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
     
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e5e5; font-size: 0.875rem; }
-    th { background: #f9fafb; font-weight: 500; color: #666; }
-    tr:hover { background: #f9fafb; }
-    
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
     .modal.active { display: flex; }
-    .modal-content { background: white; border-radius: 1rem; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-    .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
+    .modal-content { background: white; border-radius: 1rem; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1rem; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
     .modal-header h2 { font-size: 1rem; }
-    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
-    .modal-body { padding: 1.5rem; }
-    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e5e5; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; line-height: 1; }
+    .modal-body { padding: 1rem; }
+    .modal-footer { padding: 1rem; border-top: 1px solid #e5e5e5; display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
     
+    /* Form */
     .form-group { margin-bottom: 1rem; }
     .form-group label { display: block; font-size: 0.875rem; color: #666; margin-bottom: 0.25rem; }
-    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 0.875rem; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.5rem; font-size: 0.875rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     
-    .empty { text-align: center; padding: 3rem; color: #999; }
+    /* Inline edit */
+    .inline-edit { width: 70px; padding: 0.25rem; border: 1px solid #ddd; border-radius: 0.25rem; font-size: 0.875rem; }
+    .inline-edit-sm { width: 50px; }
+    
+    /* Empty */
+    .empty { text-align: center; padding: 2rem; color: #999; }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+      .header h1 { font-size: 0.9rem; }
+      .content { padding: 0.75rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+      .stat-card { padding: 0.75rem; }
+      .stat-card .number { font-size: 1.25rem; }
+      .card-header { padding: 0.75rem; }
+      .search-bar { flex-direction: column; align-items: stretch; }
+      .search-bar input { width: 100%; }
+      .btn { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .modal-content { border-radius: 0.75rem; }
+      .inline-edit { width: 60px; }
+      th, td { padding: 0.5rem; font-size: 0.8rem; }
+    }
+    
+    /* Loading */
+    .loading { text-align: center; padding: 2rem; color: #666; }
   </style>
 </head>
 <body>
@@ -86,92 +132,135 @@
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard">
   <div class="header">
-    <h1>🚌 KMB Backend Admin</h1>
+    <h1>🚌 KMB Admin</h1>
     <button class="logout" onclick="logout()">登出</button>
   </div>
-  
-  <div class="stats" id="stats"></div>
   
   <div class="tabs">
     <button class="tab active" onclick="showTab('routes')">路線</button>
     <button class="tab" onclick="showTab('fares')">車費</button>
+    <button class="tab" onclick="showTab('service')">服務</button>
     <button class="tab" onclick="showTab('announcements')">公告</button>
   </div>
   
   <div class="content">
-    <!-- Routes Section -->
+    <!-- Routes -->
     <div class="section active" id="routesSection">
+      <div class="stats" id="statsRoutes"></div>
       <div class="card">
         <div class="card-header">
           <h2>路線管理</h2>
-          <button class="btn btn-primary" onclick="showRouteModal()">+ 新增路線</button>
+          <div class="search-bar">
+            <input type="text" id="routeSearch" placeholder="搜尋路線..." onkeyup="if(event.key==='Enter')loadRoutes()">
+            <button class="btn btn-primary" onclick="loadRoutes()">🔍 搜尋</button>
+            <button class="btn btn-secondary" onclick="loadRoutes()">🔄</button>
+          </div>
         </div>
         <div class="card-body">
-          <table>
-            <thead>
-              <tr>
-                <th>路線</th>
-                <th>公司</th>
-                <th>起點</th>
-                <th>終點</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="routesTable"></tbody>
-          </table>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>路線</th>
+                  <th>公司</th>
+                  <th>起點</th>
+                  <th>終點</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="routesTable"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- Fares Section -->
+    <!-- Fares -->
     <div class="section" id="faresSection">
+      <div class="stats" id="statsFares"></div>
       <div class="card">
         <div class="card-header">
           <h2>車費管理</h2>
-          <button class="btn btn-secondary" onclick="loadFares()">🔄 刷新</button>
+          <div class="search-bar">
+            <input type="text" id="fareSearch" placeholder="搜尋路線號碼..." onkeyup="if(event.key==='Enter')loadFares()">
+            <button class="btn btn-primary" onclick="loadFares()">🔍 搜尋</button>
+            <button class="btn btn-secondary" onclick="loadFares()">🔄</button>
+          </div>
         </div>
         <div class="card-body">
-          <div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;">
-            <input type="text" id="fareSearch" placeholder="搜尋路線號碼..." style="padding:0.5rem;border:1px solid #ddd;border-radius:0.5rem;width:200px;" onkeyup="if(event.key==='Enter')loadFares()">
-            <button class="btn btn-primary" onclick="loadFares()">搜尋</button>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>路線</th>
+                  <th>公司</th>
+                  <th>站序</th>
+                  <th>車費</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="faresTable"></tbody>
+            </table>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>路線</th>
-                <th>公司</th>
-                <th>起點</th>
-                <th>終點</th>
-                <th>站序</th>
-                <th>車費 (HK$)</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="faresTable"></tbody>
-          </table>
         </div>
       </div>
     </div>
     
-    <!-- Announcements Section -->
+    <!-- Service -->
+    <div class="section" id="serviceSection">
+      <div class="stats" id="statsService"></div>
+      <div class="card">
+        <div class="card-header">
+          <h2>服務時間管理</h2>
+          <div class="search-bar">
+            <input type="text" id="serviceSearch" placeholder="搜尋路線號碼..." onkeyup="if(event.key==='Enter')loadServiceFreqs()">
+            <button class="btn btn-primary" onclick="loadServiceFreqs()">🔍 搜尋</button>
+            <button class="btn btn-secondary" onclick="loadServiceFreqs()">🔄</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>路線</th>
+                  <th>公司</th>
+                  <th>方向</th>
+                  <th>開始</th>
+                  <th>結束</th>
+                  <th>班距(分)</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="serviceTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Announcements -->
     <div class="section" id="announcementsSection">
+      <div class="stats" id="statsAnnouncements"></div>
       <div class="card">
         <div class="card-header">
           <h2>公告管理</h2>
-          <button class="btn btn-primary" onclick="showAnnouncementModal()">+ 新增公告</button>
+          <button class="btn btn-primary" onclick="showAnnouncementModal()">+ 新增</button>
         </div>
         <div class="card-body">
-          <table>
-            <thead>
-              <tr>
-                <th>標題</th>
-                <th>優先級</th>
-                <th>狀態</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="announcementsTable"></tbody>
-          </table>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>標題</th>
+                  <th>優先級</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="announcementsTable"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -191,20 +280,15 @@
         <label>路線號碼</label>
         <input type="text" id="routeNumber" placeholder="例如: 1">
       </div>
-      <div class="form-group">
-        <label>公司</label>
-        <select id="routeCompany">
-          <option value="KMB">九巴 (KMB)</option>
-          <option value="CTB">城巴 (CTB)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>起點 (中文)</label>
-        <input type="text" id="routeOriginTc" placeholder="例如: 屯門">
-      </div>
-      <div class="form-group">
-        <label>終點 (中文)</label>
-        <input type="text" id="routeDestTc" placeholder="例如: 中環">
+      <div class="form-row">
+        <div class="form-group">
+          <label>起點 (中文)</label>
+          <input type="text" id="routeOriginTc" placeholder="例如: 屯門">
+        </div>
+        <div class="form-group">
+          <label>終點 (中文)</label>
+          <input type="text" id="routeDestTc" placeholder="例如: 中環">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -229,7 +313,7 @@
       </div>
       <div class="form-group">
         <label>內容</label>
-        <textarea id="announcementContent" rows="4" placeholder="公告內容..."></textarea>
+        <textarea id="announcementContent" rows="3" placeholder="公告內容..."></textarea>
       </div>
       <div class="form-group">
         <label>優先級 (0-10)</label>
@@ -251,21 +335,14 @@ let token = localStorage.getItem('kmb_admin_token');
 async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
-  
   try {
-    const res = await fetch(`${API}/api/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    
+    const res = await fetch(`${API}/api/admin/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     if (!res.ok) throw new Error();
-    
     const data = await res.json();
     token = data.token;
     localStorage.setItem('kmb_admin_token', token);
     showDashboard();
-  } catch (err) {
+  } catch {
     document.getElementById('loginError').style.display = 'block';
   }
 }
@@ -277,26 +354,22 @@ function logout() {
   document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function authHeaders() {
-  return { 'Authorization': `Bearer ${token}` };
-}
+function authHeaders() { return { 'Authorization': `Bearer ${token}` }; }
 
 async function showDashboard() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashboard').classList.add('active');
   await loadStats();
   await loadRoutes();
-  await loadAnnouncements();
 }
 
 async function loadStats() {
   const res = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
   const data = await res.json();
-  document.getElementById('stats').innerHTML = `
-    <div class="stat-card"><div class="number">${data.routes}</div><div class="label">路線</div></div>
-    <div class="stat-card"><div class="number">${data.fares}</div><div class="label">車費記錄</div></div>
-    <div class="stat-card"><div class="number">${data.announcements}</div><div class="label">公告</div></div>
-  `;
+  document.getElementById('statsRoutes').innerHTML = `<div class="stat-card"><div class="number">${data.routes}</div><div class="label">路線</div></div>`;
+  document.getElementById('statsFares').innerHTML = `<div class="stat-card"><div class="number">${data.fares}</div><div class="label">車費記錄</div></div>`;
+  document.getElementById('statsService').innerHTML = `<div class="stat-card"><div class="number">${data.freqs || 0}</div><div class="label">服務頻率</div></div>`;
+  document.getElementById('statsAnnouncements').innerHTML = `<div class="stat-card"><div class="number">${data.announcements}</div><div class="label">公告</div></div>`;
 }
 
 function showTab(tab) {
@@ -304,28 +377,27 @@ function showTab(tab) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   event.target.classList.add('active');
   document.getElementById(tab + 'Section').classList.add('active');
+  if (tab === 'fares') loadFares();
+  if (tab === 'service') loadServiceFreqs();
+  if (tab === 'announcements') loadAnnouncements();
 }
 
 // Routes
 async function loadRoutes() {
-  const res = await fetch(`${API}/api/admin/routes`, { headers: authHeaders() });
-  const routes = await res.json();
-  
-  if (routes.length === 0) {
+  const search = document.getElementById('routeSearch')?.value || '';
+  const res = await fetch(`${API}/api/routes?search=${encodeURIComponent(search)}&limit=100`, { headers: authHeaders() });
+  const data = await res.json();
+  if (!data.routes || data.routes.length === 0) {
     document.getElementById('routesTable').innerHTML = '<tr><td colspan="5" class="empty">暫無路線</td></tr>';
     return;
   }
-  
-  document.getElementById('routesTable').innerHTML = routes.map(r => `
+  document.getElementById('routesTable').innerHTML = data.routes.map(r => `
     <tr>
       <td><strong>${r.route_number}</strong></td>
       <td>${r.company}</td>
       <td>${r.origin_tc || '-'}</td>
       <td>${r.destination_tc || '-'}</td>
-      <td>
-        <button class="btn btn-secondary" onclick="editRoute(${r.id})">編輯</button>
-        <button class="btn btn-danger" onclick="deleteRoute(${r.id})">刪除</button>
-      </td>
+      <td><button class="btn btn-secondary btn-sm" onclick="editRoute(${r.id})">編輯</button></td>
     </tr>
   `).join('');
 }
@@ -334,81 +406,107 @@ function showRouteModal(id = null) {
   document.getElementById('routeModal').classList.add('active');
   document.getElementById('routeId').value = '';
   document.getElementById('routeNumber').value = '';
-  document.getElementById('routeCompany').value = 'KMB';
   document.getElementById('routeOriginTc').value = '';
   document.getElementById('routeDestTc').value = '';
-  document.getElementById('routeModalTitle').textContent = '新增路線';
+  document.getElementById('routeModalTitle').textContent = '編輯路線';
 }
 
 async function editRoute(id) {
   const res = await fetch(`${API}/api/admin/routes`, { headers: authHeaders() });
   const routes = await res.json();
-  const route = routes.find(r => r.id == id);
-  
-  if (route) {
+  const r = routes.find(x => x.id == id);
+  if (r) {
     document.getElementById('routeModal').classList.add('active');
-    document.getElementById('routeId').value = route.id;
-    document.getElementById('routeNumber').value = route.route_number;
-    document.getElementById('routeCompany').value = route.company;
-    document.getElementById('routeOriginTc').value = route.origin_tc || '';
-    document.getElementById('routeDestTc').value = route.destination_tc || '';
+    document.getElementById('routeId').value = r.id;
+    document.getElementById('routeNumber').value = r.route_number;
+    document.getElementById('routeOriginTc').value = r.origin_tc || '';
+    document.getElementById('routeDestTc').value = r.destination_tc || '';
     document.getElementById('routeModalTitle').textContent = '編輯路線';
   }
 }
 
-function closeRouteModal() {
-  document.getElementById('routeModal').classList.remove('active');
-}
+function closeRouteModal() { document.getElementById('routeModal').classList.remove('active'); }
 
 async function saveRoute() {
   const id = document.getElementById('routeId').value;
-  const data = {
-    route_number: document.getElementById('routeNumber').value,
-    company: document.getElementById('routeCompany').value,
-    origin_tc: document.getElementById('routeOriginTc').value,
-    destination_tc: document.getElementById('routeDestTc').value
-  };
-  
+  const data = { origin_tc: document.getElementById('routeOriginTc').value, destination_tc: document.getElementById('routeDestTc').value };
   const url = id ? `${API}/api/admin/routes/${id}` : `${API}/api/admin/routes`;
-  const method = id ? 'PUT' : 'POST';
-  
-  await fetch(url, {
-    method,
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  
+  await fetch(url, { method: id ? 'PUT' : 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   closeRouteModal();
   await loadRoutes();
   await loadStats();
 }
 
-async function deleteRoute(id) {
-  if (!confirm('確定刪除此路線？')) return;
-  await fetch(`${API}/api/admin/routes/${id}`, { method: 'DELETE', headers: authHeaders() });
-  await loadRoutes();
-  await loadStats();
+// Fares
+async function loadFares() {
+  const search = document.getElementById('fareSearch')?.value || '';
+  const res = await fetch(`${API}/api/admin/fares?search=${encodeURIComponent(search)}&limit=100`, { headers: authHeaders() });
+  const data = await res.json();
+  if (!data.fares || data.fares.length === 0) {
+    document.getElementById('faresTable').innerHTML = '<tr><td colspan="5" class="empty">暫無車費</td></tr>';
+    return;
+  }
+  document.getElementById('faresTable').innerHTML = data.fares.map(f => `
+    <tr>
+      <td><strong>${f.route_number}</strong></td>
+      <td>${f.company}</td>
+      <td>${f.stop_seq}</td>
+      <td><input type="number" step="0.1" value="${f.fare}" class="inline-edit" id="fare-${f.id}"></td>
+      <td><button class="btn btn-primary btn-sm" onclick="updateFare(${f.id})">儲存</button></td>
+    </tr>
+  `).join('');
+}
+
+async function updateFare(id) {
+  const fare = document.getElementById(`fare-${id}`).value;
+  await fetch(`${API}/api/admin/fares/${id}`, { method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ fare: parseFloat(fare) }) });
+  alert('車費已更新');
+}
+
+// Service Freq
+async function loadServiceFreqs() {
+  const search = document.getElementById('serviceSearch')?.value || '';
+  const res = await fetch(`${API}/api/admin/service-freq?search=${encodeURIComponent(search)}&limit=100`, { headers: authHeaders() });
+  const data = await res.json();
+  if (!data.freqs || data.freqs.length === 0) {
+    document.getElementById('serviceTable').innerHTML = '<tr><td colspan="7" class="empty">暫無服務記錄</td></tr>';
+    return;
+  }
+  document.getElementById('serviceTable').innerHTML = data.freqs.map(f => `
+    <tr>
+      <td><strong>${f.route_number}</strong></td>
+      <td>${f.company}</td>
+      <td>${f.bound}</td>
+      <td><input type="text" value="${f.start_time}" class="inline-edit inline-edit-sm" id="st-${f.id}"></td>
+      <td><input type="text" value="${f.end_time}" class="inline-edit inline-edit-sm" id="et-${f.id}"></td>
+      <td><input type="number" value="${Math.round(f.headway/60)}" class="inline-edit inline-edit-sm" id="hw-${f.id}"></td>
+      <td><button class="btn btn-primary btn-sm" onclick="updateFreq(${f.id})">儲存</button></td>
+    </tr>
+  `).join('');
+}
+
+async function updateFreq(id) {
+  const start_time = document.getElementById(`st-${id}`).value;
+  const end_time = document.getElementById(`et-${id}`).value;
+  const headway = parseInt(document.getElementById(`hw-${id}`).value) * 60;
+  await fetch(`${API}/api/admin/service-freq/${id}`, { method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ start_time, end_time, headway }) });
+  alert('服務頻率已更新');
 }
 
 // Announcements
 async function loadAnnouncements() {
   const res = await fetch(`${API}/api/admin/announcements`, { headers: authHeaders() });
   const announcements = await res.json();
-  
   if (announcements.length === 0) {
     document.getElementById('announcementsTable').innerHTML = '<tr><td colspan="4" class="empty">暫無公告</td></tr>';
     return;
   }
-  
   document.getElementById('announcementsTable').innerHTML = announcements.map(a => `
     <tr>
       <td>${a.title}</td>
       <td>${a.priority}</td>
-      <td>${a.active ? '✅ 生效中' : '❌ 已停用'}</td>
-      <td>
-        <button class="btn btn-secondary" onclick="editAnnouncement(${a.id})">編輯</button>
-        <button class="btn btn-danger" onclick="deleteAnnouncement(${a.id})">刪除</button>
-      </td>
+      <td>${a.active ? '✅' : '❌'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="editAnnouncement(${a.id})">編輯</button> <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">刪除</button></td>
     </tr>
   `).join('');
 }
@@ -424,9 +522,7 @@ function showAnnouncementModal() {
 
 async function editAnnouncement(id) {
   const res = await fetch(`${API}/api/admin/announcements`, { headers: authHeaders() });
-  const announcements = await res.json();
-  const a = announcements.find(x => x.id == id);
-  
+  const a = (await res.json()).find(x => x.id == id);
   if (a) {
     document.getElementById('announcementModal').classList.add('active');
     document.getElementById('announcementId').value = a.id;
@@ -437,81 +533,27 @@ async function editAnnouncement(id) {
   }
 }
 
-function closeAnnouncementModal() {
-  document.getElementById('announcementModal').classList.remove('active');
-}
+function closeAnnouncementModal() { document.getElementById('announcementModal').classList.remove('active'); }
 
 async function saveAnnouncement() {
   const id = document.getElementById('announcementId').value;
-  const data = {
-    title: document.getElementById('announcementTitle').value,
-    content: document.getElementById('announcementContent').value,
-    priority: parseInt(document.getElementById('announcementPriority').value)
-  };
-  
+  const data = { title: document.getElementById('announcementTitle').value, content: document.getElementById('announcementContent').value, priority: parseInt(document.getElementById('announcementPriority').value) };
   const url = id ? `${API}/api/admin/announcements/${id}` : `${API}/api/admin/announcements`;
-  const method = id ? 'PUT' : 'POST';
-  
-  await fetch(url, {
-    method,
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  
+  await fetch(url, { method: id ? 'PUT' : 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   closeAnnouncementModal();
   await loadAnnouncements();
   await loadStats();
 }
 
 async function deleteAnnouncement(id) {
-  if (!confirm('確定刪除此公告？')) return;
+  if (!confirm('確定刪除？')) return;
   await fetch(`${API}/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders() });
   await loadAnnouncements();
   await loadStats();
 }
 
-// Fares
-async function loadFares() {
-  const search = document.getElementById('fareSearch').value;
-  const res = await fetch(`${API}/api/admin/fares?search=${encodeURIComponent(search)}`, { headers: authHeaders() });
-  const data = await res.json();
-  
-  if (data.fares && data.fares.length === 0) {
-    document.getElementById('faresTable').innerHTML = '<tr><td colspan="7" class="empty">暫無車費記錄</td></tr>';
-    return;
-  }
-  
-  document.getElementById('faresTable').innerHTML = (data.fares || []).map(f => `
-    <tr>
-      <td><strong>${f.route_number}</strong></td>
-      <td>${f.company}</td>
-      <td>${f.origin_tc || '-'}</td>
-      <td>${f.destination_tc || '-'}</td>
-      <td>${f.stop_seq}</td>
-      <td>
-        <input type="number" step="0.1" value="${f.fare}" id="fare-${f.id}" style="width:70px;padding:0.25rem;border:1px solid #ddd;border-radius:0.25rem;">
-      </td>
-      <td>
-        <button class="btn btn-primary" onclick="updateFare(${f.id})">儲存</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-async function updateFare(id) {
-  const fare = document.getElementById(`fare-${id}`).value;
-  await fetch(`${API}/api/admin/fares/${id}`, {
-    method: 'PUT',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fare: parseFloat(fare) })
-  });
-  alert('車費已更新');
-}
-
 // Init
-if (token) {
-  showDashboard();
-}
+if (token) showDashboard();
 </script>
 
 </body>
