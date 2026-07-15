@@ -4,6 +4,7 @@ const Database = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Config
 const PORT = process.env.PORT || 3001;
@@ -122,6 +123,22 @@ function authenticateAdmin(req, res, next) {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
+
+// KMB API proxy (for Angular frontend)
+app.use('/api/kmb', createProxyMiddleware({
+  target: 'https://data.etabus.gov.hk',
+  changeOrigin: true,
+  pathRewrite: { '^/api/kmb': '/v1/transport/kmb' },
+  logLevel: 'warn'
+}));
+
+// CTB API proxy (for Angular frontend)
+app.use('/api/ctb', createProxyMiddleware({
+  target: 'https://rt.data.gov.hk',
+  changeOrigin: true,
+  pathRewrite: { '^/api/ctb': '/v2/transport/citybus' },
+  logLevel: 'warn'
+}));
 
 // Get all routes (with pagination)
 app.get('/api/routes', (req, res) => {
