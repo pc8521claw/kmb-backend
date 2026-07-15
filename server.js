@@ -192,7 +192,7 @@ app.get('/api/fares/:routeNumber', (req, res) => {
     const params = [req.params.routeNumber];
     
     if (company) {
-      sql += ' AND r.company = ?';
+      sql += ' AND UPPER(r.company) = UPPER(?)';
       params.push(company);
     }
     
@@ -218,7 +218,7 @@ app.get('/api/service-hours/:routeNumber', (req, res) => {
     const params = [req.params.routeNumber];
     
     if (company) {
-      sql += ' AND r.company = ?';
+      sql += ' AND UPPER(r.company) = UPPER(?)';
       params.push(company);
     }
     
