@@ -337,9 +337,11 @@ app.get('/api/admin/fares', authenticateAdmin, (req, res) => {
     const { search, limit = 100, offset = 0 } = req.query;
     
     let sql = `
-      SELECT f.id, f.fare, f.stop_seq, r.route_number, r.company, r.origin_tc, r.destination_tc
+      SELECT f.id, f.fare, f.stop_seq, r.route_number, r.company, r.origin_tc, r.destination_tc,
+             s.name_tc as stop_name_tc
       FROM fares f
       JOIN routes r ON f.route_id = r.id
+      LEFT JOIN stops s ON f.stop_id = s.stop_id
       WHERE 1=1
     `;
     const params = [];

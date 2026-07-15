@@ -193,10 +193,10 @@
               <thead>
                 <tr>
                   <th>路線</th>
-                  <th>公司</th>
-                  <th>站序</th>
-                  <th>車費</th>
-                  <th>操作</th>
+                  <th style="width:50px;">站序</th>
+                  <th>站點</th>
+                  <th style="width:70px;">車費</th>
+                  <th style="width:60px;">操作</th>
                 </tr>
               </thead>
               <tbody id="faresTable"></tbody>
@@ -449,8 +449,8 @@ async function loadFares() {
   document.getElementById('faresTable').innerHTML = data.fares.map(f => `
     <tr>
       <td><strong>${f.route_number}</strong></td>
-      <td>${f.company}</td>
       <td>${f.stop_seq}</td>
+      <td>${f.stop_name_tc || '-'}</td>
       <td><input type="number" step="0.1" value="${f.fare}" class="inline-edit" id="fare-${f.id}"></td>
       <td><button class="btn btn-primary btn-sm" onclick="updateFare(${f.id})">儲存</button></td>
     </tr>
