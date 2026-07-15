@@ -255,6 +255,34 @@ app.get('/api/admin/me', authenticateAdmin, (req, res) => {
   res.json({ id: req.admin.id, username: req.admin.username });
 });
 
+// Change password
+app.put('/api/admin/password', authenticateAdmin, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password required' });
+    }
+    
+    if (newPassword.length < 4) {
+      return res.status(400).json({ error: 'New password must be at least 4 characters' });
+    }
+    
+    // Verify current password
+    const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.admin.id);
+    if (!admin || admin.password_hash !== currentPassword) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    
+    // Update password
+    db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(newPassword, req.admin.id);
+    
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // CRUD: Routes
 app.get('/api/admin/routes', authenticateAdmin, (req, res) => {
   try {

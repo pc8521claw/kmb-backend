@@ -133,7 +133,10 @@
 <div class="dashboard" id="dashboard">
   <div class="header">
     <h1>🚌 KMB Admin</h1>
-    <button class="logout" onclick="logout()">登出</button>
+    <div style="display:flex;gap:0.5rem;">
+      <button class="logout" onclick="showPasswordModal()" style="background:rgba(255,255,255,0.15);">🔑 改密碼</button>
+      <button class="logout" onclick="logout()">登出</button>
+    </div>
   </div>
   
   <div class="tabs">
@@ -292,6 +295,30 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeRouteModal()">取消</button>
       <button class="btn btn-primary" onclick="saveRoute()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Password Modal -->
+<div class="modal" id="passwordModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>🔑 更改密碼</h2>
+      <button class="modal-close" onclick="closePasswordModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>現在密碼</label>
+        <input type="password" id="currentPassword" placeholder="輸入現在密碼">
+      </div>
+      <div class="form-group">
+        <label>新密碼</label>
+        <input type="password" id="newPassword" placeholder="輸入新密碼（最少4字）">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
+      <button class="btn btn-primary" onclick="savePassword()">儲存</button>
     </div>
   </div>
 </div>
@@ -549,6 +576,37 @@ async function deleteAnnouncement(id) {
   await fetch(`${API}/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders() });
   await loadAnnouncements();
   await loadStats();
+}
+
+// Password
+function showPasswordModal() {
+  document.getElementById('passwordModal').classList.add('active');
+  document.getElementById('currentPassword').value = '';
+  document.getElementById('newPassword').value = '';
+}
+
+function closePasswordModal() { document.getElementById('passwordModal').classList.remove('active'); }
+
+async function savePassword() {
+  const currentPassword = document.getElementById('currentPassword').value;
+  const newPassword = document.getElementById('newPassword').value;
+  
+  if (!currentPassword || !newPassword) { alert('請填寫所有欄位'); return; }
+  if (newPassword.length < 4) { alert('新密碼最少4字'); return; }
+  
+  const res = await fetch(`${API}/api/admin/password`, {
+    method: 'PUT',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  
+  if (res.ok) {
+    alert('密碼已更新');
+    closePasswordModal();
+  } else {
+    const err = await res.json();
+    alert(err.error || '更新失敗');
+  }
 }
 
 // Init
