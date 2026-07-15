@@ -153,7 +153,7 @@ app.get('/api/routes', (req, res) => {
   }
 });
 
-// Get route by ID with fares
+// Get route by ID with fares and service info
 app.get('/api/routes/:id', (req, res) => {
   try {
     const route = db.prepare('SELECT * FROM routes WHERE id = ?').get(req.params.id);
@@ -161,10 +161,17 @@ app.get('/api/routes/:id', (req, res) => {
       return res.status(404).json({ error: 'Route not found' });
     }
     
-    const fares = db.prepare('SELECT * FROM fares WHERE route_id = ? ORDER BY stop_seq').all(req.params.id);
-    const serviceHours = db.prepare('SELECT * FROM service_hours WHERE route_id = ?').all(req.params.id);
+    const fares = db.prepare(`
+      SELECT f.fare, f.stop_seq, s.name_tc as stop_name_tc
+      FROM fares f
+      LEFT JOIN stops s ON f.stop_id = s.stop_id
+      WHERE f.route_id = ?
+      ORDER BY f.stop_seq
+    `).all(req.params.id);
     
-    res.json({ ...route, fares, serviceHours });
+    const serviceFreq = db.prepare('SELECT * FROM service_freq WHERE route_id = ? ORDER BY bound, start_time').all(req.params.id);
+    
+    res.json({ ...route, fares, serviceFreq });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -175,9 +182,11 @@ app.get('/api/fares/:routeNumber', (req, res) => {
   try {
     const { company } = req.query;
     let sql = `
-      SELECT f.*, r.route_number, r.company, r.origin_tc, r.destination_tc
+      SELECT f.fare, f.stop_seq, r.route_number, r.company, r.origin_tc, r.destination_tc,
+             s.name_tc as stop_name_tc
       FROM fares f
       JOIN routes r ON f.route_id = r.id
+      LEFT JOIN stops s ON f.stop_id = s.stop_id
       WHERE r.route_number = ?
     `;
     const params = [req.params.routeNumber];
@@ -200,14 +209,22 @@ app.get('/api/fares/:routeNumber', (req, res) => {
 app.get('/api/service-hours/:routeNumber', (req, res) => {
   try {
     const { company } = req.query;
-    const route = db.prepare('SELECT id FROM routes WHERE route_number = ? AND company = ?')
-      .get(req.params.routeNumber, company);
+    let sql = `
+      SELECT sf.*, r.route_number, r.company
+      FROM service_freq sf
+      JOIN routes r ON sf.route_id = r.id
+      WHERE r.route_number = ?
+    `;
+    const params = [req.params.routeNumber];
     
-    if (!route) {
-      return res.status(404).json({ error: 'Route not found' });
+    if (company) {
+      sql += ' AND r.company = ?';
+      params.push(company);
     }
     
-    const serviceHours = db.prepare('SELECT * FROM service_hours WHERE route_id = ?').all(route.id);
+    sql += ' ORDER BY sf.bound, sf.start_time';
+    
+    const serviceHours = db.prepare(sql).all(...params);
     res.json(serviceHours);
   } catch (err) {
     res.status(500).json({ error: err.message });
