@@ -56,7 +56,17 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS route_stops (id INTEGER PRIMARY KEY, route_id INTEGER, stop_id TEXT, stop_seq INTEGER);
   CREATE TABLE IF NOT EXISTS fares (id INTEGER PRIMARY KEY, route_id INTEGER, fare REAL, stop_seq INTEGER, stop_id TEXT);
   CREATE TABLE IF NOT EXISTS service_freq (id INTEGER PRIMARY KEY, route_id INTEGER, bound TEXT, start_time TEXT, end_time TEXT, headway INTEGER);
+  CREATE TABLE IF NOT EXISTS admins (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT);
 `);
+
+// Create default admin only if none exists
+const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get()?.count || 0;
+if (adminCount === 0) {
+  db.prepare('INSERT OR IGNORE INTO admins (username, password_hash) VALUES (?, ?)').run('admin', 'admin123');
+  console.log('Default admin created: admin / admin123');
+} else {
+  console.log('Admin exists, skipping default creation');
+}
 
 // Insert holidays
 const insertHoliday = db.prepare('INSERT OR IGNORE INTO holidays (date) VALUES (?)');
