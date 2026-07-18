@@ -341,8 +341,12 @@
         <textarea id="announcementContent" rows="3" placeholder="公告內容..."></textarea>
       </div>
       <div class="form-group">
-        <label>優先級 (0-10)</label>
-        <input type="number" id="announcementPriority" value="0" min="0" max="10">
+        <label>優先級</label>
+        <select id="announcementPriority">
+          <option value="1">一般</option>
+          <option value="5">中</option>
+          <option value="10">高 (置頂)</option>
+        </select>
       </div>
     </div>
     <div class="modal-footer">
@@ -542,7 +546,7 @@ function showAnnouncementModal() {
   document.getElementById('announcementId').value = '';
   document.getElementById('announcementTitle').value = '';
   document.getElementById('announcementContent').value = '';
-  document.getElementById('announcementPriority').value = '0';
+  document.getElementById('announcementPriority').value = '1';
   document.getElementById('announcementModalTitle').textContent = '新增公告';
 }
 
