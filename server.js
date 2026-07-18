@@ -572,8 +572,21 @@ app.put('/api/admin/announcements/:id', authenticateAdmin, (req, res) => {
   try {
     const { title, content, priority, active } = req.body;
     
+    // Get existing announcement to merge updates
+    const existing = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
+    
+    const updated = {
+      title: title !== undefined ? title : existing.title,
+      content: content !== undefined ? content : existing.content,
+      priority: priority !== undefined ? priority : existing.priority,
+      active: active !== undefined ? active : existing.active
+    };
+    
     db.prepare('UPDATE announcements SET title = ?, content = ?, priority = ?, active = ? WHERE id = ?')
-      .run(title, content, priority || 1, active !== undefined ? active : 1, req.params.id);
+      .run(updated.title, updated.content, updated.priority, updated.active, req.params.id);
     
     res.json({ message: 'Announcement updated' });
   } catch (err) {
