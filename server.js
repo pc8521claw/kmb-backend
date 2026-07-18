@@ -79,7 +79,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    priority INTEGER DEFAULT 0,
+    priority INTEGER DEFAULT 1,  -- 1=一般, 5=中, 10=高(置頂)
     active INTEGER DEFAULT 1,
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
   );
@@ -560,7 +560,7 @@ app.post('/api/admin/announcements', authenticateAdmin, (req, res) => {
     const result = db.prepare(`
       INSERT INTO announcements (title, content, priority)
       VALUES (?, ?, ?)
-    `).run(title, content, priority || 0);
+    `).run(title, content, priority || 1);
     
     res.json({ id: result.lastInsertRowid, message: 'Announcement created' });
   } catch (err) {
@@ -573,7 +573,7 @@ app.put('/api/admin/announcements/:id', authenticateAdmin, (req, res) => {
     const { title, content, priority, active } = req.body;
     
     db.prepare('UPDATE announcements SET title = ?, content = ?, priority = ?, active = ? WHERE id = ?')
-      .run(title, content, priority || 0, active !== undefined ? active : 1, req.params.id);
+      .run(title, content, priority || 1, active !== undefined ? active : 1, req.params.id);
     
     res.json({ message: 'Announcement updated' });
   } catch (err) {
