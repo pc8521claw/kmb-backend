@@ -98,6 +98,7 @@
 | GET | `/api/routes/:id` | 路線詳情 |
 | GET | `/api/fares/:routeNumber` | 車費資料 |
 | GET | `/api/service-hours/:routeNumber` | 服務時間 |
+| GET | `/api/announcements` | 公告列表 |
 | GET | `/api/kmb/*` | KMB API Proxy |
 | GET | `/api/ctb/*` | CTB API Proxy |
 
@@ -223,6 +224,25 @@ CREATE TABLE stops (
   name_tc TEXT
 );
 ```
+
+### announcements 表
+```sql
+CREATE TABLE announcements (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT,
+  priority INTEGER DEFAULT 1,  -- 1=一般, 5=中, 10=高(置頂)
+  active INTEGER DEFAULT 1,
+  created_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+```
+
+### 公告優先級
+| 優先級 | 標籤 | 說明 |
+|--------|------|------|
+| 10 | 高 | 置頂顯示，左側紅色邊框 |
+| 5 | 中 | 普通顯示 |
+| 1 | 一般 | 普通顯示 |
 
 ---
 
